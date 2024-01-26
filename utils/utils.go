@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // returns the value of the environment variable with the given key
@@ -46,3 +47,30 @@ func GetDbConnectionString() (string, error) {
 
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname), nil
 }
+
+func GetApiKeys() ([]string, error) {
+
+	apiKeys, err := GetEnvValue("API_KEYS")
+
+	if err != nil {
+		return nil, err
+	}
+
+	apiKeysList := strings.Split(apiKeys, ",")
+
+	if len(apiKeysList) == 0 {
+		return nil, fmt.Errorf("no API keys found")
+	}
+
+	return apiKeysList, nil
+}
+
+func GetQuery() string {
+	cliArgs := os.Args
+
+	if len(cliArgs) < 2 {
+		cliArgs = append(cliArgs, "fampay")
+	}
+	return cliArgs[1]
+}
+
