@@ -3,6 +3,7 @@ package yt
 import (
 	"context"
 	"log"
+	"math/rand"
 	"time"
 
 	"github.com/atharv-bhadange/youtube-api-search/constants"
@@ -16,24 +17,34 @@ func GetVideos(query string, api_keys []string, ctx context.Context) {
 
 	parts := []string{"id", "snippet"}
 
-	// Create a new YouTube client
-	client, err := youtube.NewService(ctx, option.WithAPIKey(api_keys[0]))
-	if err != nil {
-		log.Fatalf("Failed to create YouTube API client: %v", err)
-	}
-
+	currentApiKeyIndex := 0
+	prevApiKeyIndex := -1
 	countRetries := 0
 
+	// Create a new YouTube client
+	var client *youtube.Service
 	for {
 
+		if currentApiKeyIndex != prevApiKeyIndex {
+			// Create a new YouTube client
+			var err error
+			client, err = youtube.NewService(ctx, option.WithAPIKey(api_keys[currentApiKeyIndex]))
+			if err != nil {
+				log.Fatalf("Failed to create YouTube API client: %v", err)
+			}
+
+			prevApiKeyIndex = currentApiKeyIndex
+		}
+
 		stringTime := time.Now().Format(time.RFC3339)
+		maxResults := rand.Int63n(49) + 1
 
 		// Call the YouTube API to list videos for query cat
 		resp, err := client.Search.List(parts).
 			Q(query).
 			Type("video").
 			PublishedAfter(stringTime).
-			MaxResults(50).
+			MaxResults(maxResults).
 			Order("date").
 			Do()
 		if err != nil {
@@ -45,15 +56,23 @@ func GetVideos(query string, api_keys []string, ctx context.Context) {
 			log.Println("API cooldown, retrying...")
 
 			countRetries++
+
+			// change api key if max retry count reached
+			if countRetries == constants.MAX_RETRY_COUNT-1 && len(api_keys) > 1 {
+				log.Println("Changing api key...")
+				prevApiKeyIndex = currentApiKeyIndex
+				currentApiKeyIndex = (currentApiKeyIndex + 1) % len(api_keys)
+				countRetries = 0
+			}
+
 			if countRetries < constants.MAX_RETRY_COUNT {
 				time.Sleep(5 * time.Second)
 				continue
 			} else {
+				log.Fatalln("Max retry count reached, exiting...")
 				break
 			}
 		}
-
-		countRetries = 0
 
 		// insert into database
 		for _, item := range resp.Items {
