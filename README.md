@@ -16,6 +16,7 @@ API to fetch latest videos sorted in reverse chronological order of their publis
 - Ensure the Postgres server is running and the database that you want to use is created
 - Clone the repository
 - Copy the `.env.example` file to `.env` and update the values
+    - Pro tip: Supply multiple API KEYs as a comma separated values to avoid hitting the quota limit
 - Build and run the application
 ```bash
 go build -o ./build/main && ./build/main 
